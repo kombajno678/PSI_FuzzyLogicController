@@ -32,8 +32,8 @@ class Keys(object):
 
 class Actions:
 
-    slight_push = 3
-    strong_push = 7
+    slight_push = 5
+    strong_push = 10
 
     def __init__(self):
         self.actions = {

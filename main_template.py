@@ -48,38 +48,38 @@ env.unwrapped.viewer.window.on_key_press = on_key_press
 #
 # pole angle 
 #
-pole_angle_range = np.arange(-6, 6, 0.01)
+pole_angle_range = np.arange(-3, 3, 0.01)
 
 pole_angle_target = 0;
 
-pole_angle_l2 = pole_angle_target - 0.15
-pole_angle_l1 = pole_angle_target - 0.08
-pole_angle_r1 = pole_angle_target + 0.08
-pole_angle_r2 = pole_angle_target + 0.15
+pole_angle_l2 = pole_angle_target - 0.25
+pole_angle_l1 = pole_angle_target - 0.10
+pole_angle_r1 = pole_angle_target + 0.10
+pole_angle_r2 = pole_angle_target + 0.25
 
-pole_angle_left             = fuzz.trapmf(pole_angle_range, [-10, -10, pole_angle_l2, pole_angle_l1])
+pole_angle_left             = fuzz.trapmf(pole_angle_range, [-3, -3, pole_angle_l2, pole_angle_l1])
 pole_angle_slight_left      = fuzz.trimf(pole_angle_range, [pole_angle_l2, pole_angle_l1, pole_angle_target])
 pole_angle_vertical         = fuzz.trimf(pole_angle_range, [pole_angle_l1, pole_angle_target, pole_angle_r1])
 pole_angle_slight_right     = fuzz.trimf(pole_angle_range, [pole_angle_target, pole_angle_r1, pole_angle_r2])
-pole_angle_right            = fuzz.trapmf(pole_angle_range, [pole_angle_r1, pole_angle_r2, 10, 10])
+pole_angle_right            = fuzz.trapmf(pole_angle_range, [pole_angle_r1, pole_angle_r2, 3, 3])
 
 #
 # cart_position
 #
 cart_position_target = 0
 
-cart_position_range = np.arange(-3, 3, 0.01)
+cart_position_range = np.arange(-5, 5, 0.01)
 
 cart_position_l2 = cart_position_target - 1.5
 cart_position_l1 = cart_position_target - 0.75
 cart_position_r1 = cart_position_target + 0.75
 cart_position_r2 = cart_position_target + 1.5
 
-cart_position_left             = fuzz.trapmf(cart_position_range, [-3, -3, cart_position_l2, cart_position_l1])
+cart_position_left             = fuzz.trapmf(cart_position_range, [-5, -5, cart_position_l2, cart_position_l1])
 cart_position_slight_left      = fuzz.trimf(cart_position_range, [cart_position_l2, cart_position_l1, cart_position_target])
 cart_position_desired         = fuzz.trimf(cart_position_range, [cart_position_l1, cart_position_target, cart_position_r1])
 cart_position_slight_right     = fuzz.trimf(cart_position_range, [cart_position_target, cart_position_r1, cart_position_r2])
-cart_position_right            = fuzz.trapmf(cart_position_range, [cart_position_r1, cart_position_r2, 3, 3])
+cart_position_right            = fuzz.trapmf(cart_position_range, [cart_position_r1, cart_position_r2, 5, 5])
 
 
 #
@@ -268,7 +268,7 @@ while not control.WantExit:
     # init actions
     actions = Actions()
 
-    cart_position_multiplier = 0
+    cart_position_multiplier = 0.25
     pole_angle_multiplier = 1
 
     # rules for pole angle
@@ -288,19 +288,19 @@ while not control.WantExit:
 
 
 
-    #if cart is in desired poition AND cart velocity is not left 
+    #if cart is in desired poition AND cart velocity is right
     #if cart is right of desired position AND cart velocity is right)
     #if pole is left 
-    left1 = cart_position_multiplier * np.fmin(is_cart_position_right, 1 - is_cart_velocity_left)
+    left1 = cart_position_multiplier * np.fmin(is_cart_position_right, is_cart_velocity_right)
     left2 = cart_position_multiplier * np.fmin(is_cart_position_desired, is_cart_velocity_right)
     left3 = pole_angle_multiplier * is_pole_angle_left
     actions.actions['left'] *= np.fmax(np.fmax(left1, left2), left3)
 
 
     #if cart is in desired poition AND cart velocity is left 
-    #if cart is left of desired position AND cart velocity is not right
+    #if cart is left of desired position AND cart velocity is left
     #if pole is right 
-    right1 = cart_position_multiplier * np.fmin(is_cart_position_left, 1 - is_cart_velocity_right)
+    right1 = cart_position_multiplier * np.fmin(is_cart_position_left, is_cart_velocity_left)
     right2 = cart_position_multiplier * np.fmin(is_cart_position_desired, is_cart_velocity_left)
     right3 = pole_angle_multiplier * is_pole_angle_right
     actions.actions['right'] *= np.fmax(np.fmax(right1, right2), right3) 
