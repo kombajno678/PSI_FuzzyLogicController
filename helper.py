@@ -3,6 +3,8 @@
 #
 
 from typing import Union
+import numpy as np
+
 
 
 class CartForce:
@@ -25,4 +27,26 @@ class Keys(object):
     P = 112
     Q = 113
     R = 114
+
+#######################
+
+class Actions:
+
+    slight_push = 3
+    strong_push = 7
+
+    def __init__(self):
+        self.actions = {
+            'left' : CartForce.UNIT_LEFT * self.strong_push,
+            'slight_left' : CartForce.UNIT_LEFT * self.slight_push,
+            'idle' : 0,
+            'slight_right' : CartForce.UNIT_RIGHT * self.slight_push,
+            'right' : CartForce.UNIT_RIGHT * self.strong_push,
+        }
+
+    def getAction(self):
+        return np.sum(list(self.actions.values()))
+
+
+
 
