@@ -43,50 +43,57 @@ env.unwrapped.viewer.window.on_key_press = on_key_press
 #########################################################
 
 
+def OR(a, b):
+    return np.fmax(a, b)
 
+def AND(a, b):
+    return np.fmin(a, b)
 
 #
 # pole angle 
 #
+pole_angle_target = 0;
+pole_angle_d = 0.1
+
 pole_angle_range = np.arange(-3, 3, 0.01)
 
-pole_angle_target = 0;
+pole_angle_l1 = pole_angle_target - pole_angle_d
+pole_angle_r1 = pole_angle_target + pole_angle_d
 
-pole_angle_l1 = pole_angle_target - 0.25
-pole_angle_r1 = pole_angle_target + 0.25
-
-pole_angle_left             = fuzz.trapmf(pole_angle_range, [-3, -3, pole_angle_l1, pole_angle_target])
-pole_angle_vertical         = fuzz.trimf(pole_angle_range, [pole_angle_l1, pole_angle_target, pole_angle_r1])
-pole_angle_right            = fuzz.trapmf(pole_angle_range, [pole_angle_target, pole_angle_r1, 3, 3])
+pole_angle_left     = fuzz.trapmf(pole_angle_range, [-3, -3, pole_angle_l1, pole_angle_target])
+pole_angle_vertical  = fuzz.trimf(pole_angle_range, [pole_angle_l1, pole_angle_target, pole_angle_r1])
+pole_angle_right    = fuzz.trapmf(pole_angle_range, [pole_angle_target, pole_angle_r1, 3, 3])
 
 #
 # cart_position
 #
 cart_position_target = 0
+cart_position_d = 0.35
 
 cart_position_range = np.arange(-5, 5, 0.01)
 
-cart_position_l1 = cart_position_target - 0.35
-cart_position_r1 = cart_position_target + 0.35
+cart_position_l1 = cart_position_target - cart_position_d
+cart_position_r1 = cart_position_target + cart_position_d
 
-cart_position_left             = fuzz.trapmf(cart_position_range, [-5, -5, cart_position_l1, cart_position_target])
-cart_position_desired         = fuzz.trimf(cart_position_range, [cart_position_l1, cart_position_target, cart_position_r1])
-cart_position_right            = fuzz.trapmf(cart_position_range, [cart_position_target, cart_position_r1, 5, 5])
+cart_position_left    = fuzz.trapmf(cart_position_range, [-5, -5, cart_position_l1, cart_position_target])
+cart_position_desired  = fuzz.trimf(cart_position_range, [cart_position_l1, cart_position_target, cart_position_r1])
+cart_position_right   = fuzz.trapmf(cart_position_range, [cart_position_target, cart_position_r1, 5, 5])
 
 
 #
 # cart_velocity
 #
 cart_velocity_target = 0
+cart_velocity_d = 1
 
 cart_velocity_range = np.arange(-10, 10, 0.01)
 
-cart_velocity_l1 = cart_velocity_target - 0.45
-cart_velocity_r1 = cart_velocity_target + 0.45
+cart_velocity_l1 = cart_velocity_target - cart_velocity_d
+cart_velocity_r1 = cart_velocity_target + cart_velocity_d
 
-cart_velocity_left          = fuzz.trapmf(cart_velocity_range, [-10, -10, cart_velocity_l1, cart_velocity_target])
-cart_velocity_zero          = fuzz.trimf(cart_velocity_range, [cart_velocity_l1, cart_velocity_target, cart_velocity_r1])
-cart_velocity_right         = fuzz.trapmf(cart_velocity_range, [cart_velocity_target, cart_velocity_r1, 10, 10])
+cart_velocity_left  = fuzz.trapmf(cart_velocity_range, [-10, -10, cart_velocity_l1, cart_velocity_target])
+cart_velocity_zero   = fuzz.trimf(cart_velocity_range, [cart_velocity_l1, cart_velocity_target, cart_velocity_r1])
+cart_velocity_right = fuzz.trapmf(cart_velocity_range, [cart_velocity_target, cart_velocity_r1, 10, 10])
 
 
 
@@ -174,7 +181,10 @@ while not control.WantExit:
 
     cart_position, cart_velocity, pole_angle, tip_velocity = env.state # Wartości zmierzone
 
-    if cart_position > 3 or cart_position < -3 or pole_angle > 3 or pole_angle < -3:
+
+    if cart_position > 3 or cart_position < -3:
+        env.reset()
+    if pole_angle > 3 or pole_angle < -3:
         env.reset()
 
 
@@ -222,60 +232,86 @@ while not control.WantExit:
     """
     fuzzy_response = CartForce.IDLE_FORCE # do zmiennej fuzzy_response zapisz wartość siły, jaką chcesz przyłożyć do wózka.
 
+    cart_position_multiplier = 1
+    pole_angle_multiplier = 1
+
     # pole angle
-    is_pole_angle_left =            fuzz.interp_membership(pole_angle_range, pole_angle_left,           pole_angle)
-    is_pole_angle_vertical =        fuzz.interp_membership(pole_angle_range, pole_angle_vertical,       pole_angle)
-    is_pole_angle_right =           fuzz.interp_membership(pole_angle_range, pole_angle_right,          pole_angle)
-    print(
-        f"pole angle [{is_pole_angle_left:8.4f} {is_pole_angle_vertical:8.4f} {is_pole_angle_right:8.4f}]")
+    is_pole_angle_left =     pole_angle_multiplier * fuzz.interp_membership(pole_angle_range, pole_angle_left,           pole_angle)
+    is_pole_angle_vertical = pole_angle_multiplier * fuzz.interp_membership(pole_angle_range, pole_angle_vertical,       pole_angle)
+    is_pole_angle_right =    pole_angle_multiplier * fuzz.interp_membership(pole_angle_range, pole_angle_right,          pole_angle)
+    #print(
+    #    f"pole angle [{is_pole_angle_left:8.4f} {is_pole_angle_vertical:8.4f} {is_pole_angle_right:8.4f}]")
 
     # cart position
-    is_cart_position_left =         fuzz.interp_membership(cart_position_range, cart_position_left,         cart_position)
-    is_cart_position_desired =      fuzz.interp_membership(cart_position_range, cart_position_desired,      cart_position)
-    is_cart_position_right =        fuzz.interp_membership(cart_position_range, cart_position_right,        cart_position)
-    print(
-        f"cart posit [{is_cart_position_left:8.4f} {is_cart_position_desired:8.4f} {is_cart_position_right:8.4f}]")
+    is_cart_position_left =    cart_position_multiplier * fuzz.interp_membership(cart_position_range, cart_position_left,         cart_position)
+    is_cart_position_desired = cart_position_multiplier * fuzz.interp_membership(cart_position_range, cart_position_desired,      cart_position)
+    is_cart_position_right =   cart_position_multiplier * fuzz.interp_membership(cart_position_range, cart_position_right,        cart_position)
+    #print(
+    #    f"cart posit [{is_cart_position_left:8.4f} {is_cart_position_desired:8.4f} {is_cart_position_right:8.4f}]")
 
     # cart velocity
     is_cart_velocity_left =         fuzz.interp_membership(cart_velocity_range, cart_velocity_left,         cart_velocity)
     is_cart_velocity_zero =         fuzz.interp_membership(cart_velocity_range, cart_velocity_zero,         cart_velocity)
     is_cart_velocity_right =        fuzz.interp_membership(cart_velocity_range, cart_velocity_right,        cart_velocity)
-    print(
-        f"cart veloc [{is_cart_velocity_left:8.4f} {is_cart_velocity_zero:8.4f} {is_cart_velocity_right:8.4f}]")
+    #print(
+    #    f"cart veloc [{is_cart_velocity_left:8.4f} {is_cart_velocity_zero:8.4f} {is_cart_velocity_right:8.4f}]")
 
 
     # init actions
     actions = Actions()
 
-    cart_position_multiplier = 0
-    pole_angle_multiplier = 1
+    
 
 
     # rules for cart position and cart velocity
 
-
-    #if cart is in desired poition AND cart velocity is right
+    """
     #if cart is right of desired position AND cart velocity is not left
+    #if cart is in desired poition AND cart velocity is right
     #if pole is left 
-    left1 = cart_position_multiplier * np.fmin(is_cart_position_right, is_cart_velocity_right)
-    left2 = cart_position_multiplier * np.fmin(is_cart_position_desired, 1 - is_cart_velocity_left)
+    left1 = cart_position_multiplier * np.fmin(is_cart_position_right, 1 - is_cart_velocity_left)
+    left2 = cart_position_multiplier * np.fmin(is_cart_position_desired, is_cart_velocity_right)
     left3 = pole_angle_multiplier * is_pole_angle_left
     actions.actions['left'] *= np.fmax(np.fmax(left1, left2), left3)
+    """
+    #if pole is left AND (cart is right of desired position)
+    #if (cart is in desired poition AND cart velocity is right)
+    #if pole is left 
+    #if pole is vertical AND cart is left
+    left1 = AND(is_pole_angle_left, is_cart_position_right)
+    left2 = 0#AND(is_cart_position_desired, is_cart_velocity_right)
+    left3 = is_pole_angle_left
+    left4 = AND(is_pole_angle_vertical, is_cart_position_left)
+    
 
+    actions.actions['left'] *= OR(OR(left1, left2), OR(left3, left4))
 
-    #if cart is in desired poition AND cart velocity is left 
+    """
     #if cart is left of desired position AND cart velocity is not right
+    #if cart is in desired poition AND cart velocity is left 
     #if pole is right 
-    right1 = cart_position_multiplier * np.fmin(is_cart_position_left, is_cart_velocity_left)
-    right2 = cart_position_multiplier * np.fmin(is_cart_position_desired, 1 - is_cart_velocity_right)
+    right1 = cart_position_multiplier * np.fmin(is_cart_position_left, 1 - is_cart_velocity_right)
+    right2 = cart_position_multiplier * np.fmin(is_cart_position_desired, is_cart_velocity_left)
     right3 = pole_angle_multiplier * is_pole_angle_right
     actions.actions['right'] *= np.fmax(np.fmax(right1, right2), right3) 
+    """
+
+    #if pole is right AND (cart is right of desired position)
+    #if cart is in desired poition AND cart velocity is right)
+    #if pole is right 
+    # if pole is vertical ANd cart is right
+    right1 = AND(is_pole_angle_right, is_cart_position_left)
+    right2 = 0#AND(is_cart_position_desired, is_cart_velocity_left)
+    right3 = is_pole_angle_right
+    right4 = AND(is_pole_angle_vertical, is_cart_position_right)
+
+    actions.actions['right'] *= OR(OR(right1, right2), OR(right3, right4)) 
 
 
     
-    print(actions.actions)
+    #print(actions.actions)
     fuzzy_response = actions.getAction()
-    print(f"fuzzy_response = {fuzzy_response}")
+    #print(f"fuzzy_response = {fuzzy_response}")
     #
     # KONIEC algorytmu regulacji
     #########################
@@ -284,13 +320,16 @@ while not control.WantExit:
     if control.UserForce is not None:
         applied_force = control.UserForce
         control.UserForce = None
+        #print("#######################################################################")
+        #print("###############           USER INPUT                 ##################")
+        #print("#######################################################################")
     else:
         applied_force = fuzzy_response
 
     #
     # Wyświetl stan środowiska oraz wartość odpowiedzi regulatora na ten stan.
-    print(
-        f"cpos={cart_position:8.4f}, cvel={cart_velocity:8.4f}, pang={pole_angle:8.4f}, tvel={tip_velocity:8.4f}, force={applied_force:8.4f}")
+    #print(
+    #    f"cpos={cart_position:8.4f}, cvel={cart_velocity:8.4f}, pang={pole_angle:8.4f}, tvel={tip_velocity:8.4f}, force={applied_force:8.4f}")
 
     #
     # Wykonaj krok symulacji
