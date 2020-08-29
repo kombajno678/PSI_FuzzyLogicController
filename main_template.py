@@ -68,7 +68,7 @@ pole_angle_right    = fuzz.trapmf(pole_angle_range, [pole_angle_target, pole_ang
 # cart_position
 #
 cart_position_target = 0
-cart_position_d = 0.35
+cart_position_d = 0.55
 
 cart_position_range = np.arange(-5, 5, 0.01)
 
@@ -260,52 +260,22 @@ while not control.WantExit:
     # init actions
     actions = Actions()
 
-    
 
 
-    # rules for cart position and cart velocity
 
-    """
-    #if cart is right of desired position AND cart velocity is not left
-    #if cart is in desired poition AND cart velocity is right
-    #if pole is left 
-    left1 = cart_position_multiplier * np.fmin(is_cart_position_right, 1 - is_cart_velocity_left)
-    left2 = cart_position_multiplier * np.fmin(is_cart_position_desired, is_cart_velocity_right)
-    left3 = pole_angle_multiplier * is_pole_angle_left
-    actions.actions['left'] *= np.fmax(np.fmax(left1, left2), left3)
-    """
-    #if pole is left AND (cart is right of desired position)
-    #if (cart is in desired poition AND cart velocity is right)
-    #if pole is left 
-    #if pole is vertical AND cart is left
-    left1 = AND(is_pole_angle_left, is_cart_position_right)
-    left2 = 0#AND(is_cart_position_desired, is_cart_velocity_right)
-    left3 = is_pole_angle_left
-    left4 = AND(is_pole_angle_vertical, is_cart_position_left)
-    
+    #if pole is left AND cart is right of desired position then force left
+    #if pole is vertical AND cart is left then force left
+    left1 = OR(is_pole_angle_left, is_cart_position_right)
+    left2 = AND(is_pole_angle_vertical, is_cart_position_left)
+    actions.actions['left'] *= OR(left1, left2)
 
-    actions.actions['left'] *= OR(OR(left1, left2), OR(left3, left4))
 
-    """
-    #if cart is left of desired position AND cart velocity is not right
-    #if cart is in desired poition AND cart velocity is left 
-    #if pole is right 
-    right1 = cart_position_multiplier * np.fmin(is_cart_position_left, 1 - is_cart_velocity_right)
-    right2 = cart_position_multiplier * np.fmin(is_cart_position_desired, is_cart_velocity_left)
-    right3 = pole_angle_multiplier * is_pole_angle_right
-    actions.actions['right'] *= np.fmax(np.fmax(right1, right2), right3) 
-    """
+    #if pole is right AND cart is right of desired position then force right
+    # if pole is vertical AND cart is right then force right
+    right1 = OR(is_pole_angle_right, is_cart_position_left)
+    right2 = AND(is_pole_angle_vertical, is_cart_position_right)
 
-    #if pole is right AND (cart is right of desired position)
-    #if cart is in desired poition AND cart velocity is right)
-    #if pole is right 
-    # if pole is vertical ANd cart is right
-    right1 = AND(is_pole_angle_right, is_cart_position_left)
-    right2 = 0#AND(is_cart_position_desired, is_cart_velocity_left)
-    right3 = is_pole_angle_right
-    right4 = AND(is_pole_angle_vertical, is_cart_position_right)
-
-    actions.actions['right'] *= OR(OR(right1, right2), OR(right3, right4)) 
+    actions.actions['right'] *= OR(right1, right2)
 
 
     

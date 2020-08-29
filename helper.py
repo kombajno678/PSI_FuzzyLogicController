@@ -32,7 +32,7 @@ class Keys(object):
 
 class Actions:
 
-    strong_push = 8
+    strong_push = 10
 
     def __init__(self):
         self.actions = {
