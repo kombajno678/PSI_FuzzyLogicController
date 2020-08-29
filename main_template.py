@@ -42,6 +42,26 @@ env.unwrapped.viewer.window.on_key_press = on_key_press
 # KOD INICJUJĄCY - do wypełnienia
 #########################################################
 
+#
+# pole angle 
+#
+pole_angle_range = np.arange(-3, 3, 0.01)
+
+pole_angle_l2 = -0.2
+pole_angle_l1 = -0.1
+pole_angle_r1 = 0.1
+pole_angle_r2 = 0.2
+
+pole_angle_vertical         = fuzz.trimf(pole_angle_range, [pole_angle_l1, 0, pole_angle_r1])
+
+pole_angle_slight_left      = fuzz.trimf(pole_angle_range, [pole_angle_l2, pole_angle_l1, 0])
+pole_angle_left             = fuzz.trapmf(pole_angle_range, [-10, -10, pole_angle_l2, pole_angle_l1])
+
+pole_angle_slight_right     = fuzz.trimf(pole_angle_range, [0, pole_angle_r1, pole_angle_r2])
+pole_angle_right            = fuzz.trapmf(pole_angle_range, [pole_angle_r1, pole_angle_r2, 10, 10])
+
+
+
 """
 
 1. Określ dziedzinę dla każdej zmiennej lingwistycznej. Każda zmienna ma własną dziedzinę.
@@ -49,20 +69,25 @@ env.unwrapped.viewer.window.on_key_press = on_key_press
 3. Wyświetl je, w celach diagnostycznych.
 
 Przykład wyświetlania:
-
-fig, (ax0) = plt.subplots(nrows=1, figsize=(8, 9))
-
-ax0.plot(x_variable, variable_left, 'b', linewidth=1.5, label='Left')
-ax0.plot(x_variable, variable_zero, 'g', linewidth=1.5, label='Zero')
-ax0.plot(x_variable, variable_right, 'r', linewidth=1.5, label='Right')
-ax0.set_title('Angle')
-ax0.legend()
-
-
-plt.tight_layout()
-plt.show()
 """
+if False:
+    fig, (ax0) = plt.subplots(nrows=1, figsize=(8, 9))
 
+    ax0.plot(pole_angle_range, pole_angle_left, 'b', linewidth=1.5, label='Left')
+    ax0.plot(pole_angle_range, pole_angle_slight_left, 'c', linewidth=1.5, label='slight left')
+
+    ax0.plot(pole_angle_range, pole_angle_vertical, 'k', linewidth=1.5, label='Zero')
+
+    ax0.plot(pole_angle_range, pole_angle_slight_right, 'm', linewidth=1.5, label='slight right')
+    ax0.plot(pole_angle_range, pole_angle_right, 'r', linewidth=1.5, label='Right')
+    ax0.set_title('Pole angle')
+    ax0.legend()
+
+
+    plt.tight_layout()
+    plt.show()
+"""
+"""
 #########################################################
 # KONIEC KODU INICJUJĄCEGO
 #########################################################
@@ -115,6 +140,9 @@ while not control.WantExit:
     cart_position, cart_velocity, pole_angle, tip_velocity = env.state # Wartości zmierzone
 
 
+   
+
+
     """
     
     1. Przeprowadź etap rozmywania, w którym dla wartości zmierzonych wyznaczone zostaną ich przynależności do poszczególnych
@@ -154,8 +182,36 @@ while not control.WantExit:
     7. Czym będzie wyjściowa wartość skalarna?
     
     """
-
     fuzzy_response = CartForce.IDLE_FORCE # do zmiennej fuzzy_response zapisz wartość siły, jaką chcesz przyłożyć do wózka.
+
+    is_pole_angle_vertical = fuzz.interp_membership(pole_angle_range, pole_angle_vertical, pole_angle)
+    
+    is_pole_angle_slight_left = fuzz.interp_membership(pole_angle_range, pole_angle_slight_left, pole_angle)
+    is_pole_angle_left = fuzz.interp_membership(pole_angle_range, pole_angle_left, pole_angle)
+
+    is_pole_angle_slight_right = fuzz.interp_membership(pole_angle_range, pole_angle_slight_right, pole_angle)
+    is_pole_angle_right = fuzz.interp_membership(pole_angle_range, pole_angle_right, pole_angle)
+
+    #if pole is vertical then no action
+    fuzzy_response  = fuzzy_response + is_pole_angle_vertical*CartForce.IDLE_FORCE
+
+    #if pole is slightly left then move carret slightly left
+    fuzzy_response  = fuzzy_response + is_pole_angle_slight_left*CartForce.UNIT_LEFT * 5
+
+    #if pole is left then move carret left
+    fuzzy_response  = fuzzy_response + is_pole_angle_left*CartForce.UNIT_LEFT * 10
+
+
+    #if pole is slightly right then move carret slightly right
+    fuzzy_response  = fuzzy_response + is_pole_angle_slight_right*CartForce.UNIT_RIGHT * 5
+
+    #if pole is right then move carret right
+    fuzzy_response  = fuzzy_response + is_pole_angle_right*CartForce.UNIT_RIGHT * 10
+
+
+    print(fuzzy_response)
+
+    
 
     #
     # KONIEC algorytmu regulacji
