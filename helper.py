@@ -32,15 +32,12 @@ class Keys(object):
 
 class Actions:
 
-    slight_push = 5
-    strong_push = 10
+    strong_push = 7
 
     def __init__(self):
         self.actions = {
             'left' : CartForce.UNIT_LEFT * self.strong_push,
-            'slight_left' : CartForce.UNIT_LEFT * self.slight_push,
             'idle' : 0,
-            'slight_right' : CartForce.UNIT_RIGHT * self.slight_push,
             'right' : CartForce.UNIT_RIGHT * self.strong_push,
         }
 
