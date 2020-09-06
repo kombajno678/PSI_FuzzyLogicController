@@ -6,7 +6,7 @@
 
 import gym # Instalacja: https://github.com/openai/gym
 import time
-from helper import HumanControl, Keys, CartForce, Actions
+from helper import HumanControl, Keys, CartForce, Response
 import matplotlib.pyplot as plt
 
 
@@ -42,6 +42,9 @@ env.unwrapped.viewer.window.on_key_press = on_key_press
 # KOD INICJUJĄCY - do wypełnienia
 #########################################################
 
+#
+# helper/alias functions
+#
 
 def OR(a, b):
     return np.fmax(a, b)
@@ -49,6 +52,10 @@ def OR(a, b):
 def AND(a, b):
     return np.fmin(a, b)
 
+"""
+1. Określ dziedzinę dla każdej zmiennej lingwistycznej. Każda zmienna ma własną dziedzinę.
+2. Zdefiniuj funkcje przynależności dla wybranych przez siebie zmiennych lingwistycznych.
+"""
 #
 # pole angle 
 #
@@ -63,15 +70,13 @@ pole_angle_r1 = pole_angle_target + pole_angle_d
 pole_angle_left     = fuzz.trapmf(pole_angle_range, [-3, -3, pole_angle_l1, pole_angle_target])
 pole_angle_vertical  = fuzz.trimf(pole_angle_range, [pole_angle_l1, pole_angle_target, pole_angle_r1])
 pole_angle_right    = fuzz.trapmf(pole_angle_range, [pole_angle_target, pole_angle_r1, 3, 3])
-"""
-pole_angle_left     = fuzz.sigmf(pole_angle_range, pole_angle_l1, -100)
-pole_angle_vertical  = fuzz.trimf(pole_angle_range, [pole_angle_l1, pole_angle_target, pole_angle_r1])
-pole_angle_right    = fuzz.sigmf(pole_angle_range, pole_angle_r1, 100)
-"""
 #
 # cart_position
 #
-cart_position_target = 1
+cart_position_target = 0
+
+cart_position_target = float(input("input cart's target position (0 => middle, -1 => left , +1 => right)"))
+
 cart_position_d = 0.55
 
 cart_position_range = np.arange(-5, 5, 0.01)
@@ -99,15 +104,8 @@ cart_velocity_left  = fuzz.trapmf(cart_velocity_range, [-10, -10, cart_velocity_
 cart_velocity_zero   = fuzz.trimf(cart_velocity_range, [cart_velocity_l1, cart_velocity_target, cart_velocity_r1])
 cart_velocity_right = fuzz.trapmf(cart_velocity_range, [cart_velocity_target, cart_velocity_r1, 10, 10])
 
-
-
 """
-
-1. Określ dziedzinę dla każdej zmiennej lingwistycznej. Każda zmienna ma własną dziedzinę.
-2. Zdefiniuj funkcje przynależności dla wybranych przez siebie zmiennych lingwistycznych.
 3. Wyświetl je, w celach diagnostycznych.
-
-Przykład wyświetlania:
 """
 if True:
     fig, (ax0, ax1, ax2) = plt.subplots(nrows=3, figsize=(8, 9))
@@ -132,8 +130,6 @@ if True:
 
     plt.tight_layout()
     plt.show()
-"""
-"""
 #########################################################
 # KONIEC KODU INICJUJĄCEGO
 #########################################################
@@ -142,6 +138,8 @@ if True:
 #
 # Główna pętla symulacji
 #
+i = 0
+avg_cart_pos = 0
 while not control.WantExit:
 
     #
@@ -160,6 +158,8 @@ while not control.WantExit:
     if control.WantReset:
         control.WantReset = False
         env.reset()
+        i = 0
+        avg_cart_pos = 0
 
 
     ###################################################
@@ -186,23 +186,54 @@ while not control.WantExit:
     cart_position, cart_velocity, pole_angle, tip_velocity = env.state # Wartości zmierzone
 
 
-    if cart_position > 3 or cart_position < -3:
+    if cart_position > 5 or cart_position < -5:
         env.reset()
     if pole_angle > 3 or pole_angle < -3:
         env.reset()
 
+    avg_cart_pos = (avg_cart_pos*i + cart_position) / (i+1)
+    i += 1
 
-   
-
+    fuzzy_response = CartForce.IDLE_FORCE # do zmiennej fuzzy_response zapisz wartość siły, jaką chcesz przyłożyć do wózka.
 
     """
-    
     1. Przeprowadź etap rozmywania, w którym dla wartości zmierzonych wyznaczone zostaną ich przynależności do poszczególnych
        zmiennych lingwistycznych. Jedno fizyczne wejście (źródło wartości zmierzonych, np. położenie wózka) posiada własną
        zmienną lingwistyczną.
        
        Sprawdź funkcję interp_membership
-       
+    """
+    cart_position_multiplier = 1
+    pole_angle_multiplier = 1
+
+    # pole angle
+    is_pole_angle_left =     pole_angle_multiplier * fuzz.interp_membership(pole_angle_range, pole_angle_left,           pole_angle)
+    is_pole_angle_vertical = pole_angle_multiplier * fuzz.interp_membership(pole_angle_range, pole_angle_vertical,       pole_angle)
+    is_pole_angle_right =    pole_angle_multiplier * fuzz.interp_membership(pole_angle_range, pole_angle_right,          pole_angle)
+    #print(
+    #    f"pole angle [{is_pole_angle_left:8.4f} {is_pole_angle_vertical:8.4f} {is_pole_angle_right:8.4f}]")
+
+    # cart position
+    is_cart_position_left =    cart_position_multiplier * fuzz.interp_membership(cart_position_range, cart_position_left,         cart_position)
+    is_cart_position_desired = cart_position_multiplier * fuzz.interp_membership(cart_position_range, cart_position_desired,      cart_position)
+    is_cart_position_right =   cart_position_multiplier * fuzz.interp_membership(cart_position_range, cart_position_right,        cart_position)
+    #print(
+    #    f"cart posit [{is_cart_position_left:8.4f} {is_cart_position_desired:8.4f} {is_cart_position_right:8.4f}]")
+
+    # cart velocity
+    is_cart_velocity_left =         fuzz.interp_membership(cart_velocity_range, cart_velocity_left,         cart_velocity)
+    is_cart_velocity_zero =         fuzz.interp_membership(cart_velocity_range, cart_velocity_zero,         cart_velocity)
+    is_cart_velocity_right =        fuzz.interp_membership(cart_velocity_range, cart_velocity_right,        cart_velocity)
+    #print(
+    #    f"cart veloc [{is_cart_velocity_left:8.4f} {is_cart_velocity_zero:8.4f} {is_cart_velocity_right:8.4f}]")
+
+
+    # init actions
+    r = Response()
+    r.force = 25
+
+
+    """
     2. Wyznacza wartości aktywacji reguł rozmytych, wyznaczając stopień ich prawdziwości.
        Przykład reguły:
        JEŻELI kąt patyka jest zerowy ORAZ prędkość wózka jest zerowa TO moc chwilowa jest zerowa
@@ -212,85 +243,41 @@ while not control.WantExit:
        .....
        
        Przyjmując, że spójnik LUB (suma rozmyta) to max() a ORAZ/I (iloczyn rozmyty) to min() sprawdź funkcje fmax i fmin.
-    
-    
+
+
     3. Przeprowadź agregację reguł o tej samej konkluzji.
        Jeżeli masz kilka reguł, posiadających tę samą konkluzję (ale różne przesłanki) to poziom aktywacji tych reguł
        należy agregować tak, aby jedna konkluzja miała jeden poziom aktywacji. Skorzystaj z sumy rozmytej.
-    
-    4. Dla każdej reguły przeprowadź operację wnioskowania Mamdaniego.
-       Operatorem wnioskowania jest min().
-       Przykład: Jeżeli lingwistyczna zmienna wyjściowa ForceToApply ma 5 wartości (strong left, light left, idle, light right, strong right)
-       to liczba wyrażeń wnioskujących wyniesie 5 - po jednym wywołaniu operatora Mamdaniego dla konkluzji.
-       
-       W ten sposób wyznaczasz aktywacje poszczególnych wartości lingwistycznej zmiennej wyjściowej.
-       Uważaj - aktywacja wartości zmiennej lingwistycznej w konkluzji to nie liczba a zbiór rozmyty.++++
-       Ponieważ stosujesz operator min(), to wynikiem będzie "przycięty od góry" zbiór rozmyty. +++
-       
-    5. Agreguj wszystkie aktywacje dla danej zmiennej wyjściowej.
-    
-    6. Dokonaj defuzyfikacji (np. całkowanie ważone - centroid).+++
-    
-    7. Czym będzie wyjściowa wartość skalarna?
-    
     """
-    fuzzy_response = CartForce.IDLE_FORCE # do zmiennej fuzzy_response zapisz wartość siły, jaką chcesz przyłożyć do wózka.
 
-    cart_position_multiplier = 1
-    pole_angle_multiplier = 1
-
-    # pole angle
-    is_pole_angle_left =     pole_angle_multiplier * fuzz.interp_membership(pole_angle_range, pole_angle_left,           pole_angle)
-    is_pole_angle_vertical = pole_angle_multiplier * fuzz.interp_membership(pole_angle_range, pole_angle_vertical,       pole_angle)
-    is_pole_angle_right =    pole_angle_multiplier * fuzz.interp_membership(pole_angle_range, pole_angle_right,          pole_angle)
-    print(
-        f"pole angle [{is_pole_angle_left:8.4f} {is_pole_angle_vertical:8.4f} {is_pole_angle_right:8.4f}]")
-
-    # cart position
-    is_cart_position_left =    cart_position_multiplier * fuzz.interp_membership(cart_position_range, cart_position_left,         cart_position)
-    is_cart_position_desired = cart_position_multiplier * fuzz.interp_membership(cart_position_range, cart_position_desired,      cart_position)
-    is_cart_position_right =   cart_position_multiplier * fuzz.interp_membership(cart_position_range, cart_position_right,        cart_position)
-    print(
-        f"cart posit [{is_cart_position_left:8.4f} {is_cart_position_desired:8.4f} {is_cart_position_right:8.4f}]")
-
-    # cart velocity
-    is_cart_velocity_left =         fuzz.interp_membership(cart_velocity_range, cart_velocity_left,         cart_velocity)
-    is_cart_velocity_zero =         fuzz.interp_membership(cart_velocity_range, cart_velocity_zero,         cart_velocity)
-    is_cart_velocity_right =        fuzz.interp_membership(cart_velocity_range, cart_velocity_right,        cart_velocity)
-    print(
-        f"cart veloc [{is_cart_velocity_left:8.4f} {is_cart_velocity_zero:8.4f} {is_cart_velocity_right:8.4f}]")
-
-
-    # init actions
-    actions = Actions()
-
-
-
-
-    #if pole is left AND cart is right of desired position then force left
-    #if pole is vertical AND cart is left then force left
-    left1 = AND(is_pole_angle_left, is_cart_position_right)
+    #left1 = AND(AND(is_pole_angle_vertical, is_cart_position_desired), is_cart_velocity_right)
     left2 = AND(is_pole_angle_vertical, is_cart_position_left)
     left3 = is_pole_angle_left
-    print(f"left1 = {left1}; left2 = {left2}; left3={left3}")
-    actions.actions['left'] *= OR(left3, OR(left1, left2))
+    #print(f"left1 = {left1}; left2 = {left2}; left3={left3}")
+    r.actions['left'] = OR(left3, left2)
 
 
-    #if pole is right AND cart is right of desired position then force right
-    # if pole is vertical AND cart is right then force right
-    right1 = AND(is_pole_angle_right, is_cart_position_left)
+    idle1 = is_pole_angle_vertical
+    idle2 = AND(is_cart_position_desired, is_cart_velocity_zero)
+    idle3 = AND(AND(is_pole_angle_vertical, is_cart_position_left), is_cart_velocity_right)
+    idle4 = AND(AND(is_pole_angle_vertical, is_cart_position_right), is_cart_velocity_left)
+    
+    #print(f"idle {idle1} {idle2}")
+    r.actions['idle'] = OR(OR(idle1, idle2), OR(idle3, idle4))
+
+    #right1 = AND(AND(is_pole_angle_vertical, is_cart_position_desired), is_cart_velocity_left)
     right2 = AND(is_pole_angle_vertical, is_cart_position_right)
     right3 = is_pole_angle_right
-    print(f"right1 = {right1}; right2 = {right2}; right3={right3}")
-
-
-    actions.actions['right'] *= OR(right3, OR(right1, right2))
+    #print(f"right1 = {right1}; right2 = {right2}; right3={right3}")
+    r.actions['right'] = OR(right3, right2)
 
 
     
-    print(actions.actions)
-    fuzzy_response = actions.getAction()
-    print(f"fuzzy_response = {fuzzy_response}")
+    #print(r.actions)
+    fuzzy_response = r.defuzze()
+    #print(f"fuzzy_response = {fuzzy_response}")
+    cart_pod_diff = cart_position_target - avg_cart_pos
+    print(f"i={i:8}; CART POS:[AVG = {avg_cart_pos:6.3f}; TARGET = {cart_position_target}; DIFF = {cart_pod_diff:6.3f}];  response force = {fuzzy_response:8.4f}")
     #
     # KONIEC algorytmu regulacji
     #########################
@@ -307,8 +294,8 @@ while not control.WantExit:
 
     #
     # Wyświetl stan środowiska oraz wartość odpowiedzi regulatora na ten stan.
-    print(
-        f"cpos={cart_position:8.4f}, cvel={cart_velocity:8.4f}, pang={pole_angle:8.4f}, tvel={tip_velocity:8.4f}, force={applied_force:8.4f}")
+    #print(
+    #    f"cpos={cart_position:8.4f}, cvel={cart_velocity:8.4f}, pang={pole_angle:8.4f}, tvel={tip_velocity:8.4f}, force={applied_force:8.4f}")
 
     #
     # Wykonaj krok symulacji
