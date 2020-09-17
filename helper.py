@@ -70,8 +70,8 @@ class Response:
             Uważaj - aktywacja wartości zmiennej lingwistycznej w konkluzji to nie liczba a zbiór rozmyty.++++
             Ponieważ stosujesz operator min(), to wynikiem będzie "przycięty od góry" zbiór rozmyty. +++
         """
-        left  = np.fmin(self.force_left, self.actions['left'])
-        idle  = np.fmin(self.force_idle, self.actions['idle'])
+        left  = np.fmin(self.force_left,  self.actions['left'])
+        idle  = np.fmin(self.force_idle,  self.actions['idle'])
         right = np.fmin(self.force_right, self.actions['right'])
 
         """
