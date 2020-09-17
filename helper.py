@@ -32,31 +32,33 @@ class Keys(object):
 #######################
 
 class Response:
-
-    force = 25
-    defuzze_method = 'centroid'
     print_info = False
 
-    def __init__(self):
+    def __init__(self, force, defuzze_method):
+        self.force = force
+        self.defuzze_method = defuzze_method
+
         self.actions = {
             'left' : 0,
             'idle' : 0,
             'right' : 0,
         }
+
+        self.force_range = np.arange(-self.force*2, self.force*2+0.1, 0.1)
+
+        self.force = force
+
+        d = self.force
+        e = 0
+
+        self.force_left  = fuzz.trapmf(self.force_range, [-self.force-d, -self.force-e, -self.force+e, -self.force+d])
+        self.force_idle  = fuzz.trapmf(self.force_range, [-d, 0-e, 0+e, d])
+        self.force_right = fuzz.trapmf(self.force_range, [self.force-d, self.force-e, self.force+e, self.force+d])
+
+        
        
 
     def defuzze(self):
-
-        left_range = self.actions['left']
-        idle_range = self.actions['idle']
-        right_range = self.actions['right']
-
-        force_range = np.arange(-self.force*2, self.force*2+0.1, 0.1)
-
-        force_left  = fuzz.trapmf(force_range, [-self.force*2, -self.force-1, -self.force+1, 0])
-        force_idle  = fuzz.trapmf(force_range, [-self.force+1, 0, 0, self.force-1])
-        force_right = fuzz.trapmf(force_range, [0, self.force-1, self.force+1, self.force*2])
-
 
         """
         4. Dla każdej reguły przeprowadź operację wnioskowania Mamdaniego.
@@ -68,21 +70,21 @@ class Response:
             Uważaj - aktywacja wartości zmiennej lingwistycznej w konkluzji to nie liczba a zbiór rozmyty.++++
             Ponieważ stosujesz operator min(), to wynikiem będzie "przycięty od góry" zbiór rozmyty. +++
         """
-        force_left  = np.fmin(force_left, left_range)
-        force_idle  = np.fmin(force_idle, idle_range)
-        force_right = np.fmin(force_right, right_range)
+        left  = np.fmin(self.force_left, self.actions['left'])
+        idle  = np.fmin(self.force_idle, self.actions['idle'])
+        right = np.fmin(self.force_right, self.actions['right'])
 
         """
         5. Agreguj wszystkie aktywacje dla danej zmiennej wyjściowej.
         """
 
-        aggregated = np.fmax(force_left, np.fmax(force_idle, force_right))
+        aggregated = np.fmax(left, np.fmax(idle, right))
 
         """
         6. Dokonaj defuzyfikacji (np. całkowanie ważone - centroid).+++
         """
 
-        defuzzed  = fuzz.defuzz(force_range, aggregated, self.defuzze_method)
+        defuzzed  = fuzz.defuzz(self.force_range, aggregated, self.defuzze_method)
 
         """
         7. Czym będzie wyjściowa wartość skalarna?
